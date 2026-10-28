@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PillPal AI — Smart Medication Assistant</title>
+  <meta name="description" content="PillPal AI: Smart IoT medicine dispensing and reminder system for elderly patients. Caregiver dashboard." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════════════════════════ */
+    :root {
+      --bg:           #0f1117;
+      --bg-card:      #171c26;
+      --bg-card2:     #1e2433;
+      --bg-input:     #232b3b;
+      --border:       #2a3347;
+      --border-light: #3a4a65;
+
+      --primary:      #3b82f6;
+      --primary-dark: #2563eb;
+      --primary-glow: rgba(59,130,246,.3);
+
+      --success:      #22c55e;
+      --success-dark: #16a34a;
+      --success-bg:   rgba(34,197,94,.1);
+
+      --warning:      #f59e0b;
+      --warning-bg:   rgba(245,158,11,.1);
+
+      --danger:       #ef4444;
+      --danger-dark:  #b91c1c;
+      --danger-bg:    rgba(239,68,68,.1);
+
+      --purple:       #a855f7;
+      --purple-bg:    rgba(168,85,247,.1);
+
+      --text:         #f1f5f9;
+      --text-muted:   #94a3b8;
+      --text-dim:     #64748b;
+
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+
+      --shadow:    0 4px 24px rgba(0,0,0,.5);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,.6);
+    }
+
+    /* Elder-Friendly Overrides */
+    body.elder-mode {
+      font-size: 20px;
+    }
+    body.elder-mode .next-med-name    { font-size: 3rem !important; }
+    body.elder-mode .next-med-dose    { font-size: 1.6rem !important; }
+    body.elder-mode #dispense-btn     { font-size: 1.4rem !important; padding: 26px 32px !important; }
+    body.elder-mode .schedule-name    { font-size: 1.2rem !important; }
+    body.elder-mode .sched-extra,
+    body.elder-mode .card-subtitle,
+    body.elder-mode .info-chip-label,
+    body.elder-mode .section-label    { display: none !important; }
+    body.elder-mode .medicine-info-grid { grid-template-columns: 1fr 1fr !important; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       LAYOUT
+    ═══════════════════════════════════════════════════════════════ */
+    .app-wrapper {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      grid-template-rows: 70px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════════════ */
+    header {
+      grid-column: 1 / -1;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+
+    .logo-block { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #3b82f6, #7c3aed);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .logo-name {
+      font-size: 1.35rem; font-weight: 800; letter-spacing: -.4px;
+      background: linear-gradient(90deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-sub { font-size: .72rem; color: var(--text-muted); font-weight: 500; }
+
+    .header-center {
+      display: flex; align-items: center; gap: 20px;
+    }
+
+    /* Elder toggle */
+    .elder-toggle {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .8rem; font-weight: 600; color: var(--text-muted);
+      cursor: pointer; user-select: none;
+    }
+    .toggle-switch {
+      width: 38px; height: 22px;
+      background: var(--border); border-radius: 999px;
+      position: relative; transition: background .2s; cursor: pointer;
+      flex-shrink: 0;
+    }
+    .toggle-switch::after {
+      content: '';
+      position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px;
+      background: #fff; border-radius: 50%;
+      transition: transform .2s;
+    }
+    .toggle-switch.on { background: var(--primary); }
+    .toggle-switch.on::after { transform: translateX(16px); }
+
+    .header-right { display: flex; align-items: center; gap: 14px; }
+
+    #connection-badge {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 14px; border-radius: 999px;
+      border: 1.5px solid var(--border);
+      font-size: .8rem; font-weight: 600;
+      transition: all .3s; white-space: nowrap;
+    }
+    #connection-badge.online  { border-color: var(--success); color: var(--success); background: var(--success-bg); }
+    #connection-badge.offline { border-color: var(--danger);  color: var(--danger);  background: var(--danger-bg);  }
+    #connection-badge.checking{ border-color: var(--warning); color: var(--warning); background: var(--warning-bg); }
+    .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    #connection-badge.online .conn-dot { animation: blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:.4} }
+
+    .time-block { text-align: right; }
+    .time-block .t-time { font-size: 1rem; font-weight: 700; }
+    .time-block .t-date { font-size: .72rem; color: var(--text-muted); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════════════════════════ */
+    aside {
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow-y: auto;
+    }
+
+    .nav-section-label {
+      font-size: .65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-dim);
+      padding: 14px 12px 6px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      font-size: .88rem; font-weight: 500; color: var(--text-muted);
+      cursor: pointer; transition: all .15s; text-decoration: none;
+    }
+    .nav-item:hover { background: var(--bg-input); color: var(--text); }
+    .nav-item.active { background: rgba(59,130,246,.12); color: var(--primary); font-weight: 600; }
+    .nav-item .nav-icon { font-size: 17px; flex-shrink: 0; width: 20px; text-align: center; }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .project-badge {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px;
+      font-size: .78rem; color: var(--text-muted); line-height: 1.6;
+    }
+    .project-badge strong { color: var(--text); display: block; margin-bottom: 4px; font-size: .82rem; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MAIN CONTENT
+    ═══════════════════════════════════════════════════════════════ */
+    main {
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CARD
+    ═══════════════════════════════════════════════════════════════ */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .card-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; gap: 12px;
+    }
+    .card-head-left { display: flex; align-items: center; gap: 12px; }
+    .card-icon {
+      width: 40px; height: 40px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .ci-blue   { background: rgba(59,130,246,.15); }
+    .ci-green  { background: rgba(34,197,94,.15);  }
+    .ci-amber  { background: rgba(245,158,11,.15); }
+    .ci-purple { background: rgba(168,85,247,.15); }
+    .ci-red    { background: rgba(239,68,68,.15);  }
+    .ci-teal   { background: rgba(20,184,166,.15); }
+
+    .card-title    { font-size: 1rem; font-weight: 700; }
+    .card-subtitle { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* Section tag */
+    .stag {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .9px; padding: 3px 9px; border-radius: 6px;
+    }
+    .stag-blue   { color: var(--primary); background: rgba(59,130,246,.1); }
+    .stag-green  { color: var(--success); background: var(--success-bg); }
+    .stag-amber  { color: var(--warning); background: var(--warning-bg); }
+    .stag-purple { color: var(--purple);  background: var(--purple-bg);  }
+
+    /* ═══════════════════════════════════════════════════════════════
+       STATUS BADGES
+    ═══════════════════════════════════════════════════════════════ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 999px;
+      font-size: .78rem; font-weight: 600;
+    }
+    .badge-pending  { background: var(--warning-bg);    color: var(--warning); border: 1px solid rgba(245,158,11,.3); }
+    .badge-taken    { background: var(--success-bg);    color: var(--success); border: 1px solid rgba(34,197,94,.3);  }
+    .badge-dispensed{ background: rgba(59,130,246,.1);  color: var(--primary); border: 1px solid rgba(59,130,246,.3); }
+    .badge-missed   { background: var(--danger-bg);     color: var(--danger);  border: 1px solid rgba(239,68,68,.3);  }
+    .badge-online   { background: var(--success-bg);    color: var(--success); border: 1px solid rgba(34,197,94,.3);  }
+    .badge-offline  { background: var(--danger-bg);     color: var(--danger);  border: 1px solid rgba(239,68,68,.3);  }
+    .badge-ready    { background: rgba(20,184,166,.1);  color: #14b8a6;        border: 1px solid rgba(20,184,166,.3); }
+    .badge-late     { background: var(--purple-bg);     color: var(--purple);  border: 1px solid rgba(168,85,247,.3); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       GRID HELPERS
+    ═══════════════════════════════════════════════════════════════ */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       NEXT MEDICATION HERO CARD
+    ═══════════════════════════════════════════════════════════════ */
+    #next-med-card {
+      background: linear-gradient(140deg, #171c26 0%, #1a2035 100%);
+      border: 1.5px solid var(--border);
+      position: relative; overflow: hidden;
+    }
+    #next-med-card::before {
+      content: '';
+      position: absolute; top: -60px; right: -60px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(59,130,246,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .medicine-info-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 20px 0 24px;
+    }
+    .info-chip {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px;
+    }
+    .info-chip-label {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--text-muted); margin-bottom: 6px;
+    }
+    .info-chip-value {
+      font-size: 1rem; font-weight: 700; color: var(--text);
+    }
+
+    .next-med-name {
+      font-size: 2.4rem; font-weight: 900; letter-spacing: -.5px;
+      background: linear-gradient(90deg, #e2e8f0, #94a3b8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.1; margin-bottom: 4px;
+    }
+    .next-med-dose { font-size: 1.1rem; color: var(--text-muted); font-weight: 500; }
+
+    /* DISPENSE BUTTON */
+    #dispense-btn {
+      width: 100%; padding: 20px 32px;
+      font-size: 1.15rem; font-weight: 800; letter-spacing: .4px;
+      border: none; border-radius: var(--radius-lg);
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 12px; font-family: inherit;
+      transition: transform .15s, box-shadow .2s;
+    }
+    #dispense-btn.idle {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: #fff; box-shadow: 0 4px 20px rgba(59,130,246,.4);
+    }
+    #dispense-btn.idle:hover {
+      transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59,130,246,.5);
+    }
+    #dispense-btn.idle:active { transform: translateY(0); }
+    #dispense-btn.connecting, #dispense-btn.dispensing {
+      background: #1e293b; color: #64748b;
+      cursor: not-allowed; box-shadow: none;
+    }
+    #dispense-btn.success {
+      background: linear-gradient(135deg, var(--success-dark), #15803d);
+      color: #fff; cursor: not-allowed;
+      box-shadow: 0 4px 18px rgba(34,197,94,.35);
+    }
+    #dispense-btn.error {
+      background: linear-gradient(135deg, var(--danger-dark), #991b1b);
+      color: #fff; box-shadow: 0 4px 18px rgba(239,68,68,.3);
+    }
+    #dispense-btn:disabled { pointer-events: none; }
+
+    .btn-spinner {
+      width: 20px; height: 20px;
+      border: 3px solid rgba(255,255,255,.2);
+      border-top-color: rgba(255,255,255,.7);
+      border-radius: 50%; animation: spin .65s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #dispense-result {
+      margin-top: 14px; padding: 13px 16px; border-radius: var(--radius-md);
+      font-size: .9rem; font-weight: 600; display: none;
+      align-items: center; gap: 10px;
+    }
+    #dispense-result.success { background: rgba(34,197,94,.1);  border: 1px solid rgba(34,197,94,.2);  color: var(--success); display: flex; }
+    #dispense-result.error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.2);  color: var(--danger);  display: flex; }
+
+    /* MULTI-DISPENSE CONTROLS & TEST ACCESS */
+    .dispense-controls-bar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 14px; padding: 12px 16px;
+      background: var(--bg-card2); border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+    }
+    .cycles-selector-wrap {
+      display: flex; align-items: center; gap: 10px; font-size: .84rem; font-weight: 600;
+    }
+    .cycle-btn-group {
+      display: inline-flex; background: var(--bg-input); border-radius: var(--radius-sm); padding: 3px;
+      border: 1px solid var(--border); gap: 2px;
+    }
+    .cycle-btn {
+      background: transparent; border: none; color: var(--text-muted);
+      padding: 5px 12px; border-radius: 6px; font-size: .78rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .cycle-btn:hover { color: var(--text); }
+    .cycle-btn.active {
+      background: var(--primary); color: #fff; box-shadow: 0 2px 8px var(--primary-glow);
+    }
+    .dispense-btn-group {
+      display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: stretch;
+    }
+    .btn-quick-open {
+      padding: 0 22px; font-size: .92rem; font-weight: 700;
+      background: rgba(20,184,166,.14); color: #14b8a6;
+      border: 1.5px solid rgba(20,184,166,.35); border-radius: var(--radius-lg);
+      cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 8px;
+      white-space: nowrap; transition: all .15s;
+    }
+    .btn-quick-open:hover {
+      background: rgba(20,184,166,.25); border-color: #14b8a6; transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(20,184,166,.25);
+    }
+    .btn-quick-open:active { transform: translateY(0); }
+    .btn-quick-open:disabled { opacity: .5; pointer-events: none; }
+    .btn-again {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: var(--radius-sm);
+      background: var(--primary); color: #fff; border: none; font-size: .8rem;
+      font-weight: 700; cursor: pointer; transition: opacity .15s;
+    }
+    .btn-again:hover { opacity: .9; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCHEDULE
+    ═══════════════════════════════════════════════════════════════ */
+    .schedule-list { display: flex; flex-direction: column; gap: 10px; }
+    .sched-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      transition: border-color .2s;
+    }
+    .sched-item.active-sched { border-color: var(--primary); background: rgba(59,130,246,.05); }
+    .sched-item.taken-sched  { opacity: .65; }
+
+    .period-bubble {
+      width: 50px; height: 50px; border-radius: 13px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; flex-shrink: 0; font-weight: 700;
+    }
+    .pb-morning   { background: rgba(245,158,11,.15);  color: var(--warning); }
+    .pb-afternoon { background: rgba(59,130,246,.15);   color: var(--primary); }
+    .pb-night     { background: rgba(168,85,247,.15);   color: var(--purple); }
+    .pb-icon  { font-size: 18px; line-height: 1; }
+    .pb-label { font-size: .55rem; text-transform: uppercase; letter-spacing: .5px; }
+
+    .sched-meta { flex: 1; }
+    .schedule-name { font-size: .98rem; font-weight: 700; }
+    .sched-extra { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MEDICINE CABINET
+    ═══════════════════════════════════════════════════════════════ */
+    .cabinet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .compartment {
+      background: var(--bg-input); border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); padding: 18px; text-align: center;
+      transition: border-color .2s;
+    }
+    .compartment.active-comp { border-color: var(--primary); }
+    .comp-number {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: rgba(59,130,246,.12); color: var(--primary);
+      font-size: .85rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+    }
+    .comp-period { font-size: .7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 6px; }
+    .comp-med    { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .comp-dose   { font-size: .8rem; color: var(--text-muted); margin-bottom: 12px; }
+    .comp-servo  {
+      font-size: .7rem; color: var(--text-dim);
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 8px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       ACTIVITY LOG
+    ═══════════════════════════════════════════════════════════════ */
+    .log-wrap { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    thead th {
+      background: var(--bg-input); padding: 11px 16px; text-align: left;
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--text-muted); white-space: nowrap;
+    }
+    tbody tr { border-top: 1px solid var(--border); transition: background .12s; }
+    tbody tr:hover { background: rgba(255,255,255,.02); }
+    tbody td { padding: 13px 16px; vertical-align: middle; font-weight: 500; }
+    .log-empty { text-align: center; padding: 32px; color: var(--text-dim); font-size: .9rem; }
+    @keyframes row-in { from { opacity:0; background: rgba(59,130,246,.1); } to { opacity:1; } }
+    .row-new { animation: row-in .8s ease forwards; }
+    .log-time { font-size: .8rem; color: var(--text-muted); }
+    .log-note { font-size: .75rem; color: var(--text-dim); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       CAREGIVER SUMMARY STATS
+    ═══════════════════════════════════════════════════════════════ */
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    .stat-box {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px; text-align: center;
+    }
+    .stat-number { font-size: 2rem; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+    .stat-label  { font-size: .75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+    .stat-scheduled { color: var(--primary); }
+    .stat-taken     { color: var(--success); }
+    .stat-pending   { color: var(--warning); }
+
+    .cg-info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-top: 1px solid var(--border);
+      font-size: .88rem;
+    }
+    .cg-info-label { color: var(--text-muted); font-weight: 500; }
+    .cg-info-value { font-weight: 700; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SYSTEM STATUS
+    ═══════════════════════════════════════════════════════════════ */
+    .sys-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .sys-item {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px; text-align: center;
+    }
+    .sys-icon  { font-size: 22px; margin-bottom: 8px; }
+    .sys-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); margin-bottom: 5px; }
+    .sys-status{ font-size: .82rem; font-weight: 700; }
+    .sys-online { color: var(--success); }
+    .sys-offline{ color: var(--danger);  }
+    .sys-ready  { color: #14b8a6; }
+    .last-comm  { font-size: .8rem; color: var(--text-muted); padding-top: 12px; border-top: 1px solid var(--border); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MEDICINE INFO
+    ═══════════════════════════════════════════════════════════════ */
+    .med-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .med-info-chip {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 14px 16px;
+    }
+    .mic-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); margin-bottom: 5px; }
+    .mic-value { font-size: .95rem; font-weight: 600; }
+
+    .safety-notice {
+      background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2);
+      border-radius: var(--radius-md); padding: 14px 16px;
+      font-size: .82rem; color: #fbbf24; line-height: 1.6;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .safety-icon { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       MISSED MEDICATION ALERT
+    ═══════════════════════════════════════════════════════════════ */
+    #missed-alert {
+      background: rgba(239,68,68,.08); border: 1.5px solid rgba(239,68,68,.3);
+      border-radius: var(--radius-lg); padding: 20px 24px;
+      display: none; align-items: flex-start; gap: 16px;
+    }
+    #missed-alert.visible { display: flex; }
+    .alert-icon { font-size: 28px; flex-shrink: 0; }
+    .alert-body { flex: 1; }
+    .alert-title { font-size: 1rem; font-weight: 800; color: var(--danger); margin-bottom: 4px; }
+    .alert-desc  { font-size: .88rem; color: #fca5a5; line-height: 1.55; }
+    .alert-actions { display: flex; gap: 10px; margin-top: 12px; }
+    .btn-sm {
+      padding: 8px 18px; border-radius: var(--radius-sm);
+      font-size: .85rem; font-weight: 700; border: none;
+      cursor: pointer; font-family: inherit; transition: opacity .15s;
+    }
+    .btn-sm:hover { opacity: .85; }
+    .btn-danger   { background: var(--danger);  color: #fff; }
+    .btn-ghost    { background: var(--bg-input); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════════════════════════════ */
+    #toast-zone {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px; z-index: 9999;
+    }
+    .toast {
+      padding: 12px 18px; border-radius: var(--radius-md);
+      font-size: .88rem; font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.5); max-width: 360px;
+      animation: toast-in .25s ease;
+    }
+    @keyframes toast-in { from { opacity:0; transform:translateX(30px); } to { opacity:1; transform:none; } }
+    .toast.success { background: #14532d; border: 1px solid #166534; color: #4ade80; }
+    .toast.error   { background: #7f1d1d; border: 1px solid #991b1b; color: #fca5a5; }
+    .toast.info    { background: #1e3a5f; border: 1px solid #1d4ed8; color: #93c5fd; }
+    .toast.warning { background: #78350f; border: 1px solid #92400e; color: #fcd34d; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════════════════════ */
+    .page-footer {
+      text-align: center; padding: 16px; font-size: .75rem;
+      color: var(--text-dim); border-top: 1px solid var(--border);
+    }
+    .page-footer strong { color: var(--text-muted); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      .app-wrapper { grid-template-columns: 1fr; }
+      aside { display: none; }
+      .grid-3, .grid-4, .cabinet-grid, .sys-grid { grid-template-columns: 1fr 1fr; }
+      .medicine-info-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      header { flex-wrap: wrap; height: auto; padding: 12px 16px; }
+      .header-center { order: 3; width: 100%; }
+      main { padding: 16px; }
+      .grid-2, .grid-3, .grid-4, .stat-row, .med-info-grid { grid-template-columns: 1fr; }
+      .cabinet-grid, .sys-grid { grid-template-columns: 1fr; }
+      .next-med-name { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     APP WRAPPER
+════════════════════════════════════════════════════════════════ -->
+<div class="app-wrapper">
+
+  <!-- ── HEADER ─────────────────────────────────────────── -->
+  <header>
+    <div class="logo-block">
+      <div class="logo-icon">💊</div>
+      <div>
+        <div class="logo-name">PillPal AI</div>
+        <div class="logo-sub">Smart Medication Assistant</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <label class="elder-toggle" title="Elder-Friendly Mode — larger text and simplified view">
+        <div class="toggle-switch" id="elder-toggle-sw"></div>
+        <span>Elder-Friendly Mode</span>
+      </label>
+    </div>
+
+    <div class="header-right">
+      <div class="time-block">
+        <div class="t-time" id="live-time">—</div>
+        <div class="t-date" id="live-date">—</div>
+      </div>
+      <div id="connection-badge" class="checking" role="status" aria-live="polite">
+        <span class="conn-dot"></span>
+        <span id="conn-label">Checking…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR ────────────────────────────────────────── -->
+  <aside>
+    <span class="nav-section-label">Dashboard</span>
+    <a class="nav-item active" href="#next-med-card">
+      <span class="nav-icon">💊</span> Next Dose
+    </a>
+    <a class="nav-item" href="#schedule-card">
+      <span class="nav-icon">📅</span> Today's Schedule
+    </a>
+    <a class="nav-item" href="#cabinet-card">
+      <span class="nav-icon">🗄️</span> Medicine Cabinet
+    </a>
+    <a class="nav-item" href="#log-card">
+      <span class="nav-icon">📋</span> Activity Log
+    </a>
+
+    <span class="nav-section-label">Patient Care</span>
+    <a class="nav-item" href="#cg-card">
+      <span class="nav-icon">👤</span> Caregiver Summary
+    </a>
+    <a class="nav-item" href="#med-info-card">
+      <span class="nav-icon">ℹ️</span> Medicine Info
+    </a>
+
+    <span class="nav-section-label">System</span>
+    <a class="nav-item" href="#sys-card">
+      <span class="nav-icon">🖥️</span> System Status
+    </a>
+
+    <div class="sidebar-bottom">
+      <div class="project-badge">
+        <strong>🎓 College Prototype</strong>
+        PillPal AI — IoT Smart Dispenser<br>
+        ESP32 + Servo Motor<br>
+        <span style="color:var(--primary)">10.123.129.33</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ───────────────────────────────────────────── -->
+  <main id="main-scroll">
+
+    <!-- 1. MISSED MEDICATION ALERT (hidden until triggered) -->
+    <div id="missed-alert" role="alert" aria-live="assertive">
+      <div class="alert-icon">🔔</div>
+      <div class="alert-body">
+        <div class="alert-title">Medication Reminder</div>
+        <div class="alert-desc">
+          It looks like the scheduled medicine has not been dispensed yet.
+          The <strong>Night dose of Amlodipine</strong> was due at 08:00 PM.
+          Please dispense or dismiss if already given manually.
+        </div>
+        <div class="alert-actions">
+          <button class="btn-sm btn-danger" id="alert-dispense-btn">Dispense Now</button>
+          <button class="btn-sm btn-ghost"  id="alert-dismiss-btn">Dismiss</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. NEXT MEDICATION HERO -->
+    <div class="card" id="next-med-card">
+      <div class="card-head">
+        <div class="card-head-left">
+          <div class="card-icon ci-blue">⏰</div>
+          <div>
+            <div class="stag stag-blue" style="margin-bottom:5px">⚡ Next Dose</div>
+            <div class="card-title">Next Medication</div>
+            <div class="card-subtitle">Night dose — scheduled for 08:00 PM</div>
+          </div>
+        </div>
+        <div id="med-status-wrap">
+          <span class="badge badge-pending">⏳ Pending</span>
+        </div>
+      </div>
+
+      <!-- Medicine name -->
+      <div class="next-med-name" id="next-med-name">Amlodipine</div>
+      <div class="next-med-dose" id="next-med-dose">Blood pressure medication · 1 Tablet</div>
+
+      <!-- Info chips -->
+      <div class="medicine-info-grid">
+        <div class="info-chip">
+          <div class="info-chip-label">Medicine</div>
+          <div class="info-chip-value">Amlodipine</div>
+        </div>
+        <div class="info-chip">
+          <div class="info-chip-label">Dose</div>
+          <div class="info-chip-value">1 Tablet</div>
+        </div>
+        <div class="info-chip">
+          <div class="info-chip-label">Scheduled</div>
+          <div class="info-chip-value">08:00 PM</div>
+        </div>
+        <div class="info-chip">
+          <div class="info-chip-label">Compartment</div>
+          <div class="info-chip-value">Slot 3 · GPIO 13</div>
+        </div>
+      </div>
+
+      <!-- Dispense controls bar: Cycles & Test Access -->
+      <div class="dispense-controls-bar">
+        <div class="cycles-selector-wrap">
+          <span style="color:var(--text-muted)">Repeat Cycles:</span>
+          <div class="cycle-btn-group" role="group" aria-label="Dispense repeat count">
+            <button type="button" class="cycle-btn active" data-cycles="1" title="Dispense 1 time">1x</button>
+            <button type="button" class="cycle-btn" data-cycles="2" title="Dispense 2 times sequentially">2x</button>
+            <button type="button" class="cycle-btn" data-cycles="3" title="Dispense 3 times sequentially">3x</button>
+            <button type="button" class="cycle-btn" data-cycles="4" title="Dispense 4 times sequentially">4x</button>
+            <button type="button" class="cycle-btn" data-cycles="5" title="Dispense 5 times sequentially">5x</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="badge badge-ready" id="access-unlocked-badge">🔓 Multi-Access: 3-4+ Openings Allowed</span>
+          <span class="badge badge-dispensed" id="open-count-badge">Total Opened: <strong id="open-count-num" style="margin-left:3px">2</strong></span>
+        </div>
+      </div>
+
+      <!-- Dispense button group -->
+      <div class="dispense-btn-group">
+        <button id="dispense-btn" class="idle" aria-label="Dispense medicine via ESP32">
+          <span id="btn-icon">💊</span>
+          <span id="btn-label">DISPENSE MEDICINE</span>
+        </button>
+        <button type="button" id="quick-open-btn" class="btn-quick-open" title="Open dispenser compartment immediately for testing">
+          <span>🔓</span>
+          <span>Open Dispenser</span>
+        </button>
+      </div>
+
+      <!-- Result banner -->
+      <div id="dispense-result" role="alert"></div>
+
+      <!-- Safety note -->
+      <p style="margin-top:14px; font-size:.75rem; color:var(--text-dim); line-height:1.55;">
+        ⚠️ Dispensed = ESP32 successfully opened the compartment. Confirm the patient has received the tablet.
+        Do not claim ingestion without physical sensor confirmation.
+      </p>
+    </div>
+
+    <!-- 3 + 4: SCHEDULE + CABINET -->
+    <div class="grid-2">
+
+      <!-- TODAY'S SCHEDULE -->
+      <div class="card" id="schedule-card">
+        <div class="card-head">
+          <div class="card-head-left">
+            <div class="card-icon ci-amber">📅</div>
+            <div>
+              <div class="card-title">Today's Schedule</div>
+              <div class="card-subtitle" id="sched-date">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="schedule-list">
+
+          <!-- Morning -->
+          <div class="sched-item taken-sched" id="sched-morning">
+            <div class="period-bubble pb-morning">
+              <span class="pb-icon">☀️</span>
+              <span class="pb-label">Morn</span>
+            </div>
+            <div class="sched-meta">
+              <div class="schedule-name">Amlodipine</div>
+              <div class="sched-extra">08:00 AM · 1 Tablet · Slot 1</div>
+            </div>
+            <span class="badge badge-taken">✅ Taken</span>
+          </div>
+
+          <!-- Afternoon -->
+          <div class="sched-item taken-sched" id="sched-afternoon">
+            <div class="period-bubble pb-afternoon">
+              <span class="pb-icon">🌤️</span>
+              <span class="pb-label">Noon</span>
+            </div>
+            <div class="sched-meta">
+              <div class="schedule-name">Metformin</div>
+              <div class="sched-extra">01:00 PM · 1 Tablet · Slot 2</div>
+            </div>
+            <span class="badge badge-taken">✅ Taken</span>
+          </div>
+
+          <!-- Night -->
+          <div class="sched-item active-sched" id="sched-night">
+            <div class="period-bubble pb-night">
+              <span class="pb-icon">🌙</span>
+              <span class="pb-label">Night</span>
+            </div>
+            <div class="sched-meta">
+              <div class="schedule-name">Amlodipine</div>
+              <div class="sched-extra">08:00 PM · 1 Tablet · Slot 3</div>
+            </div>
+            <span class="badge badge-pending" id="sched-night-badge">⏳ Pending</span>
+          </div>
+
+        </div>
+        <p style="margin-top:14px; font-size:.72rem; color:var(--text-dim);">
+          ⚠️ "Taken" status is confirmed by dispense event only. Physical ingestion is not monitored.
+        </p>
+      </div>
+
+      <!-- MEDICINE CABINET -->
+      <div class="card" id="cabinet-card">
+        <div class="card-head">
+          <div class="card-head-left">
+            <div class="card-icon ci-purple">🗄️</div>
+            <div>
+              <div class="card-title">Medicine Cabinet</div>
+              <div class="card-subtitle">Physical compartments · Servo-controlled</div>
+            </div>
+          </div>
+        </div>
+        <div class="cabinet-grid">
+          <div class="compartment">
+            <div class="comp-number">1</div>
+            <div class="comp-period">Morning · 08:00 AM</div>
+            <div class="comp-med">Amlodipine</div>
+            <div class="comp-dose">1 Tablet</div>
+            <div class="comp-servo">Servo → GPIO 13</div>
+          </div>
+          <div class="compartment">
+            <div class="comp-number">2</div>
+            <div class="comp-period">Afternoon · 01:00 PM</div>
+            <div class="comp-med">Metformin</div>
+            <div class="comp-dose">1 Tablet</div>
+            <div class="comp-servo">Servo → GPIO 13</div>
+          </div>
+          <div class="compartment active-comp" id="cabinet-slot3">
+            <div class="comp-number">3</div>
+            <div class="comp-period">Night · 08:00 PM</div>
+            <div class="comp-med">Amlodipine</div>
+            <div class="comp-dose">1 Tablet</div>
+            <div class="comp-servo">⚡ Active Slot</div>
+          </div>
+        </div>
+        <p style="margin-top:14px; font-size:.72rem; color:var(--text-dim);">
+          Each compartment is opened by the ESP32-controlled servo motor (GPIO 13)
+          for 3 seconds upon receiving a POST /dispense command.
+        </p>
+      </div>
+
+    </div><!-- /.grid-2 -->
+
+    <!-- 5 + 6: LOG + CAREGIVER SUMMARY -->
+    <div class="grid-2">
+
+      <!-- ACTIVITY LOG -->
+      <div class="card" id="log-card">
+        <div class="card-head">
+          <div class="card-head-left">
+            <div class="card-icon ci-green">📋</div>
+            <div>
+              <div class="card-title">Activity Log</div>
+              <div class="card-subtitle">All dispensing events today</div>
+            </div>
+          </div>
+          <span class="stag stag-green" id="log-count-tag">0 Events</span>
+        </div>
+        <div class="log-wrap">
+          <table aria-label="Dispensing activity log">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Medicine</th>
+                <th>Dose</th>
+                <th>Status</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="log-body">
+              <tr><td colspan="5" class="log-empty">No dispensing events yet today.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CAREGIVER SUMMARY -->
+      <div class="card" id="cg-card">
+        <div class="card-head">
+          <div class="card-head-left">
+            <div class="card-icon ci-teal">👤</div>
+            <div>
+              <div class="card-title">Caregiver Summary</div>
+              <div class="card-subtitle">Today's medication overview</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-box">
+            <div class="stat-number stat-scheduled">3</div>
+            <div class="stat-label">Scheduled</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-number stat-taken" id="cg-taken">2</div>
+            <div class="stat-label">Dispensed</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-number stat-pending" id="cg-pending">1</div>
+            <div class="stat-label">Pending</div>
+          </div>
+        </div>
+
+        <div class="cg-info-row">
+          <span class="cg-info-label">Last Dose</span>
+          <span class="cg-info-value" id="cg-last-dose">01:03 PM — Metformin</span>
+        </div>
+        <div class="cg-info-row">
+          <span class="cg-info-label">Next Dose Due</span>
+          <span class="cg-info-value">08:00 PM — Amlodipine</span>
+        </div>
+        <div class="cg-info-row">
+          <span class="cg-info-label">Device</span>
+          <span class="cg-info-value" id="cg-device-status">
+            <span class="badge badge-online">● ESP32 Online</span>
+          </span>
+        </div>
+        <div class="cg-info-row">
+          <span class="cg-info-label">IP Address</span>
+          <span class="cg-info-value" style="font-family:monospace; color:var(--primary)">10.123.129.33</span>
+        </div>
+      </div>
+
+    </div><!-- /.grid-2 -->
+
+    <!-- 7 + 8: MEDICINE INFO + SYSTEM STATUS -->
+    <div class="grid-2">
+
+      <!-- MEDICINE INFORMATION -->
+      <div class="card" id="med-info-card">
+        <div class="card-head">
+          <div class="card-head-left">
+            <div class="card-icon ci-blue">ℹ️</div>
+            <div>
+              <div class="card-title">Medicine Information</div>
+              <div class="card-subtitle">Reference only — follow doctor's prescription</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="med-info-grid">
+          <div class="med-info-chip">
+            <div class="mic-label">Medicine Name</div>
+            <div class="mic-value">Amlodipine</div>
+          </div>
+          <div class="med-info-chip">
+            <div class="mic-label">Dose</div>
+            <div class="mic-value">1 Tablet</div>
+          </div>
+          <div class="med-info-chip">
+            <div class="mic-label">Schedule</div>
+            <div class="mic-value">Morning · Night</div>
+          </div>
+          <div class="med-info-chip">
+            <div class="mic-label">Purpose</div>
+            <div class="mic-value">Blood pressure management</div>
+          </div>
+        </div>
+
+        <div class="med-info-grid">
+          <div class="med-info-chip">
+            <div class="mic-label">Medicine Name</div>
+            <div class="mic-value">Metformin</div>
+          </div>
+          <div class="med-info-chip">
+            <div class="mic-label">Dose</div>
+            <div class="mic-value">1 Tablet</div>
+          </div>
+          <div class="med-info-chip">
+            <div class="mic-label">Schedule</div>
+            <div class="mic-value">Afternoon</div>
+          </div>
+          <div class="med-info-chip">
+            <div class="mic-label">Purpose</div>
+            <div class="mic-value">Blood sugar management</div>
+          </div>
+        </div>
+
+        <div class="safety-notice">
+          <span class="safety-icon">⚠️</span>
+          <span>
+            Medication information shown here is <strong>for reference only</strong>.
+            Always follow the prescription provided by the patient's healthcare professional.
+            This system confirms dispensing, not ingestion.
+          </span>
+        </div>
+      </div>
+
+      <!-- SYSTEM STATUS -->
+      <div class="card" id="sys-card">
+        <div class="card-head">
+          <div class="card-head-left">
+            <div class="card-icon ci-green">🖥️</div>
+            <div>
+              <div class="card-title">System Status</div>
+              <div class="card-subtitle">Live hardware status</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sys-grid">
+          <div class="sys-item">
+            <div class="sys-icon">📡</div>
+            <div class="sys-label">ESP32</div>
+            <div class="sys-status" id="sys-esp32">—</div>
+          </div>
+          <div class="sys-item">
+            <div class="sys-icon">📶</div>
+            <div class="sys-label">Wi-Fi</div>
+            <div class="sys-status sys-online" id="sys-wifi">Connected</div>
+          </div>
+          <div class="sys-item">
+            <div class="sys-icon">⚙️</div>
+            <div class="sys-label">Servo</div>
+            <div class="sys-status sys-ready" id="sys-servo">Ready</div>
+          </div>
+          <div class="sys-item">
+            <div class="sys-icon">🔗</div>
+            <div class="sys-label">API</div>
+            <div class="sys-status" id="sys-api">—</div>
+          </div>
+        </div>
+
+        <div class="last-comm">
+          Last communication: <span id="last-comm-time" style="font-weight:700; color:var(--text)">—</span>
+        </div>
+      </div>
+
+    </div><!-- /.grid-2 -->
+
+    <!-- FOOTER -->
+    <div class="page-footer">
+      <strong>PillPal AI</strong> — Smart Medication Dispensing System &nbsp;|&nbsp;
+      Caregiver Dashboard &nbsp;|&nbsp;
+      <span style="color:var(--success)">● Live Hardware Mode</span>
+      &nbsp;— ESP32 at <code>10.123.129.33</code>
+      &nbsp;|&nbsp; College Prototype
+    </div>
+
+  </main><!-- /main -->
+</div><!-- /.app-wrapper -->
+
+<!-- TOAST ZONE -->
+<div id="toast-zone" aria-live="assertive" aria-atomic="false"></div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCRIPT — ESP32 Service Layer + Dashboard Logic
+     ──────────────────────────────────────────────────────────────
+     IMPORTANT:
+       BASE_URL       = http://10.123.129.33  (real ESP32 device)
+       SIMULATION_MODE = false                (live hardware)
+     Do NOT change these values.
+════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* ──────────────────────────────────────────────────────────────
+     ESP32 SERVICE LAYER
+     ──────────────────────────────────────────────────────────── */
+  var ESP32Config = {
+    BASE_URL:          'http://10.123.129.33',  // ✅ Real ESP32 device IP
+    DISPENSE_ENDPOINT: '/dispense',
+    STATUS_ENDPOINT:   '/status',
+    TIMEOUT_MS:        10000,
+    SIMULATION_MODE:   false,                   // ✅ Live hardware — do NOT change
+  };
+
+  var _dispensing = false; // guard: prevent concurrent /dispense calls
+
+  function fetchWithTimeout(url, opts) {
+    var ctrl = new AbortController();
+    var tid  = setTimeout(function () { ctrl.abort(); }, ESP32Config.TIMEOUT_MS);
+    return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+      .finally(function () { clearTimeout(tid); });
+  }
+
+  /**
+   * dispenseMedicine(slot)
+   * Sends POST /dispense to the ESP32.
+   * The firmware opens the servo for 3 seconds then closes it.
+   * Returns a Promise that resolves with the JSON response body.
+   */
+  function dispenseMedicine(slot) {
+    slot = slot || 1;
+    return fetchWithTimeout(ESP32Config.BASE_URL + ESP32Config.DISPENSE_ENDPOINT, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ slot: slot }),
+    }).then(function (res) {
+      if (!res.ok) throw new Error('ESP32 returned HTTP ' + res.status);
+      return res.json();
+    });
+  }
+
+  /**
+   * checkConnectionStatus()
+   * Sends GET /status to the ESP32.
+   * Returns {online: boolean, data: object|null}.
+   */
+  function checkConnectionStatus() {
+    return fetchWithTimeout(ESP32Config.BASE_URL + ESP32Config.STATUS_ENDPOINT, {
+      method: 'GET',
+    }).then(function (res) {
+      if (!res.ok) return { online: false, data: null };
+      return res.json().then(function (d) {
+        return { online: true, data: d };
+      }).catch(function () {
+        return { online: true, data: null };
+      });
+    }).catch(function () {
+      return { online: false, data: null };
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     HELPERS
+  ──────────────────────────────────────────────────────────── */
+  function fmtTime(d) {
+    return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  function fmtDate(d) {
+    return d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+  function fmtDateShort(d) {
+    return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  function toast(msg, type, ms) {
+    var icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
+    var el = document.createElement('div');
+    el.className = 'toast ' + (type || 'info');
+    el.innerHTML = '<span>' + (icons[type]||'ℹ️') + '</span><span>' + msg + '</span>';
+    document.getElementById('toast-zone').appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.remove(); }, ms || 4500);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     LIVE CLOCK
+  ──────────────────────────────────────────────────────────── */
+  function tickClock() {
+    var now = new Date();
+    var el;
+    el = document.getElementById('live-time'); if (el) el.textContent = fmtTime(now);
+    el = document.getElementById('live-date'); if (el) el.textContent = fmtDateShort(now);
+    el = document.getElementById('sched-date'); if (el) el.textContent = fmtDate(now);
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  /* ──────────────────────────────────────────────────────────────
+     ELDER-FRIENDLY TOGGLE
+  ──────────────────────────────────────────────────────────── */
+  var elderOn = false;
+  var elderSw = document.getElementById('elder-toggle-sw');
+  elderSw.addEventListener('click', function () {
+    elderOn = !elderOn;
+    elderSw.className = 'toggle-switch' + (elderOn ? ' on' : '');
+    document.body.className = elderOn ? 'elder-mode' : '';
+    toast(elderOn ? 'Elder-Friendly Mode ON — simplified view' : 'Elder-Friendly Mode OFF', 'info', 2500);
+  });
+
+  /* ──────────────────────────────────────────────────────────────
+     ACTIVITY LOG
+  ──────────────────────────────────────────────────────────── */
+  var logEntries = [
+    { time: '08:06 AM', medicine: 'Amlodipine', dose: '1 Tablet', status: 'dispensed', note: 'Morning dose — servo opened 3s' },
+    { time: '01:03 PM', medicine: 'Metformin',  dose: '1 Tablet', status: 'dispensed', note: 'Afternoon dose — servo opened 3s' },
+  ];
+
+  function renderLog() {
+    var tbody = document.getElementById('log-body');
+    if (!logEntries.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="log-empty">No dispensing events yet today.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = logEntries.map(function (e, i) {
+      var badgeHtml =
+        e.status === 'dispensed' ? '<span class="badge badge-dispensed">✅ Dispensed</span>'
+      : e.status === 'failed'    ? '<span class="badge badge-missed">❌ Failed</span>'
+      :                            '<span class="badge badge-pending">⏳ Pending</span>';
+      return '<tr class="' + (i === 0 ? 'row-new' : '') + '">'
+        + '<td><div style="font-weight:700">' + e.time + '</div></td>'
+        + '<td><strong>' + e.medicine + '</strong></td>'
+        + '<td>' + e.dose + '</td>'
+        + '<td>' + badgeHtml + '</td>'
+        + '<td><span class="log-note">' + (e.note || '—') + '</span></td>'
+        + '</tr>';
+    }).join('');
+
+    // Update count tag
+    var tag = document.getElementById('log-count-tag');
+    if (tag) tag.textContent = logEntries.length + ' Event' + (logEntries.length !== 1 ? 's' : '');
+  }
+
+  renderLog();
+
+  /* ──────────────────────────────────────────────────────────────
+     MULTI-ACCESS & DISPENSE STATE
+  ──────────────────────────────────────────────────────────── */
+  var selectedCycles     = 1;
+  var totalOpeningsCount = 2; // morning + afternoon pre-seeded
+  var nightDoseDispensed = false;
+  var autoResetTimer     = null;
+
+  function updateOpenCount() {
+    var el = document.getElementById('open-count-num');
+    if (el) el.textContent = String(totalOpeningsCount);
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     BUTTON STATE MACHINE
+  ──────────────────────────────────────────────────────────── */
+  function setBtnState(state, labelOverride) {
+    var btn   = document.getElementById('dispense-btn');
+    var icon  = document.getElementById('btn-icon');
+    var label = document.getElementById('btn-label');
+    var qBtn  = document.getElementById('quick-open-btn');
+    btn.className = state;
+
+    var defaultIdleText = selectedCycles > 1
+      ? ('DISPENSE MEDICINE (' + selectedCycles + ' CYCLES)')
+      : (nightDoseDispensed ? 'DISPENSE AGAIN' : 'DISPENSE MEDICINE');
+
+    var states = {
+      idle:        { disabled: false, busy: false, icon: '💊',  text: defaultIdleText },
+      connecting:  { disabled: true,  busy: true,  icon: null,  text: 'Connecting to PillPal…' },
+      dispensing:  { disabled: true,  busy: true,  icon: null,  text: 'Dispensing…' },
+      success:     { disabled: false, busy: false, icon: '✅',  text: 'Medicine Dispensed' },
+      error:       { disabled: false, busy: false, icon: '⚠️', text: 'Retry Dispense' },
+    };
+
+    var s = states[state] || states.idle;
+    btn.disabled = s.disabled;
+    btn.setAttribute('aria-busy', String(s.busy));
+    if (qBtn) qBtn.disabled = s.busy;
+
+    if (s.icon === null) {
+      icon.outerHTML = '<div class="btn-spinner" id="btn-icon"></div>';
+    } else {
+      var ic = document.getElementById('btn-icon');
+      if (ic) ic.outerHTML = '<span id="btn-icon">' + s.icon + '</span>';
+    }
+    label.textContent = labelOverride || s.text;
+  }
+
+  function setMedStatus(state) {
+    var wrap = document.getElementById('med-status-wrap');
+    var map = {
+      pending:    '<span class="badge badge-pending">⏳ Pending</span>',
+      connecting: '<span class="badge badge-dispensed">🔗 Connecting…</span>',
+      dispensing: '<span class="badge badge-dispensed">⚙️ Dispensing…</span>',
+      dispensed:  '<span class="badge badge-dispensed">✅ Dispensed</span>',
+      error:      '<span class="badge badge-missed">❌ Error</span>',
+    };
+    wrap.innerHTML = map[state] || map.pending;
+  }
+
+  function showResult(type, html) {
+    var el = document.getElementById('dispense-result');
+    el.className = type; el.innerHTML = html; el.style.display = 'flex';
+  }
+  function clearResult() {
+    var el = document.getElementById('dispense-result');
+    el.style.display = 'none'; el.innerHTML = '';
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     MISSED ALERT HELPERS
+  ──────────────────────────────────────────────────────────── */
+  function dismissAlert() {
+    var a = document.getElementById('missed-alert');
+    if (a) a.classList.remove('visible');
+  }
+
+  function showMissedAlert() {
+    var a = document.getElementById('missed-alert');
+    if (a) a.classList.add('visible');
+  }
+
+  /* ──────────────────────────────────────────────────────────────
+     MULTI-ACCESS DISPENSE ENGINE (Supports 1x, 2x, 3x, 4x, 5x, and unlimited repeats)
+  ──────────────────────────────────────────────────────────── */
+  function runDispenseSequence(cyclesRemaining, totalCycles) {
+    var cycleNum = totalCycles - cyclesRemaining + 1;
+    var statusLabel = totalCycles > 1
+      ? ('Opening Compartment ' + cycleNum + ' of ' + totalCycles + '…')
+      : 'Dispensing (Servo Active 3s)…';
+
+    setBtnState('dispensing', statusLabel);
+    setMedStatus('dispensing');
+
+    dispenseMedicine(1)
+      .then(function (data) {
+        totalOpeningsCount++;
+        updateOpenCount();
+        nightDoseDispensed = true;
+
+        var now = new Date();
+        var timeStr = fmtTime(now);
+
+        // Update schedule badge
+        var nightBadge = document.getElementById('sched-night-badge');
+        if (nightBadge) nightBadge.outerHTML = '<span class="badge badge-dispensed" id="sched-night-badge">✅ Dispensed</span>';
+        var nightItem = document.getElementById('sched-night');
+        if (nightItem) { nightItem.classList.remove('active-sched'); nightItem.classList.add('taken-sched'); }
+
+        // Update cabinet
+        var slot3 = document.getElementById('cabinet-slot3');
+        if (slot3) slot3.querySelector('.comp-servo').textContent = '✅ Dispensed at ' + timeStr;
+
+        // Add to activity log
+        var cycleTag = totalCycles > 1 ? (' [Cycle ' + cycleNum + '/' + totalCycles + ']') : '';
+        logEntries.unshift({
+          time: timeStr,
+          medicine: 'Amlodipine' + cycleTag,
+          dose: '1 Tablet',
+          status: 'dispensed',
+          note: 'Opening #' + totalOpeningsCount + ' · servo opened 3s · ' + (data && data.dispensedAt ? data.dispensedAt : 'confirmed'),
+        });
+        renderLog();
+
+        // Update caregiver summary
+        var takenEl  = document.getElementById('cg-taken');
+        var pendEl   = document.getElementById('cg-pending');
+        var lastDose = document.getElementById('cg-last-dose');
+        if (takenEl)  takenEl.textContent  = String(totalOpeningsCount);
+        if (pendEl)   pendEl.textContent   = '0';
+        if (lastDose) lastDose.textContent = timeStr + ' — Amlodipine';
+
+        if (cyclesRemaining > 1) {
+          // More cycles remain in this multi-dispense request!
+          showResult('success',
+            '<span style="font-size:1.5rem">🔄</span>'
+            + '<div style="flex:1">'
+            + '<div style="font-weight:800">Cycle ' + cycleNum + ' of ' + totalCycles + ' Complete!</div>'
+            + '<div style="font-size:.8rem;opacity:.8;margin-top:3px">'
+            + 'Servo opened for 3s. Preparing cycle ' + (cycleNum + 1) + ' of ' + totalCycles + ' in 3.5s…'
+            + '</div></div>'
+          );
+          toast('Cycle ' + cycleNum + ' of ' + totalCycles + ' finished. Starting next opening…', 'info', 2800);
+
+          setTimeout(function () {
+            runDispenseSequence(cyclesRemaining - 1, totalCycles);
+          }, 3500); // 3.5s allows physical servo to complete 3s open/close cycle before next trigger
+        } else {
+          // Sequence completed!
+          _dispensing = false;
+          setBtnState('success', totalCycles > 1 ? ('All ' + totalCycles + ' Cycles Completed ✅') : 'Medicine Dispensed ✅');
+          setMedStatus('dispensed');
+
+          showResult('success',
+            '<span style="font-size:1.5rem">✅</span>'
+            + '<div style="flex:1">'
+            + '<div style="font-weight:800">' + (totalCycles > 1 ? (totalCycles + ' Dispense Cycles Completed Successfully!') : 'Medicine Dispensed Successfully!') + '</div>'
+            + '<div style="font-size:.8rem;opacity:.8;margin-top:3px">'
+            + 'Servo opened at ' + timeStr + ' (3s cycle). Total openings today: <strong>' + totalOpeningsCount + '</strong>.'
+            + '</div>'
+            + '<div style="margin-top:8px; display:flex; gap:8px;">'
+            + '<button type="button" class="btn-again" id="btn-dispense-again">⚡ Open Dispenser Again</button>'
+            + '</div>'
+            + '</div>'
+          );
+
+          var againBtn = document.getElementById('btn-dispense-again');
+          if (againBtn) againBtn.addEventListener('click', function () { handleDispense(1); });
+
+          toast('Dispenser cycle completed (' + totalOpeningsCount + ' total openings). Ready for next use.', 'success', 5000);
+          dismissAlert();
+
+          // Auto-reset back to ready state after 3.5s so user can immediately click 3, 4, 10+ times!
+          if (autoResetTimer) clearTimeout(autoResetTimer);
+          autoResetTimer = setTimeout(function () {
+            if (!_dispensing) {
+              setBtnState('idle', 'DISPENSE AGAIN');
+            }
+          }, 3500);
+        }
+      })
+      .catch(function (err) {
+        _dispensing = false;
+        setBtnState('error');
+        setMedStatus('error');
+
+        var errMsg = err && err.name === 'AbortError'
+          ? 'Request timed out — ESP32 did not respond in 10 seconds.'
+          : (err && err.message) || 'Unknown error';
+
+        showResult('error',
+          '<span style="font-size:1.5rem">❌</span>'
+          + '<div>'
+          + '<div style="font-weight:800">Dispense Failed</div>'
+          + '<div style="font-size:.8rem;opacity:.85;margin-top:3px">'
+          + errMsg
+          + '</div><div style="font-size:.75rem;opacity:.65;margin-top:4px">'
+          + 'Check ESP32 connection · IP: 10.123.129.33'
+          + '</div></div>'
+        );
+
+        logEntries.unshift({
+          time: fmtTime(new Date()),
+          medicine: 'Amlodipine',
+          dose: '1 Tablet',
+          status: 'failed',
+          note: 'Dispense failed (cycle ' + cycleNum + ') — ' + errMsg,
+        });
+        renderLog();
+
+        toast('ESP32 Offline — ' + errMsg, 'error', 7000);
+        updateConnectionOffline();
+      });
+  }
+
+  function handleDispense(cycles) {
+    if (_dispensing) {
+      toast('Dispenser is currently operating. Please wait for servo to finish.', 'warning', 2500);
+      return;
+    }
+    _dispensing = true;
+    var numCycles = (typeof cycles === 'number' && cycles > 0) ? cycles : selectedCycles;
+
+    clearResult();
+    setBtnState('connecting', 'Connecting to ESP32…');
+    setMedStatus('connecting');
+
+    setTimeout(function () {
+      runDispenseSequence(numCycles, numCycles);
+    }, 450);
+  }
+
+  // Wire main dispense button
+  document.getElementById('dispense-btn').addEventListener('click', function () {
+    handleDispense();
+  });
+
+  // Wire quick open button
+  var quickOpenBtn = document.getElementById('quick-open-btn');
+  if (quickOpenBtn) {
+    quickOpenBtn.addEventListener('click', function () {
+      handleDispense(1);
+    });
+  }
+
+  // Wire cycle selector buttons (1x, 2x, 3x, 4x, 5x)
+  var cycleBtns = document.querySelectorAll('.cycle-btn');
+  cycleBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      cycleBtns.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedCycles = parseInt(btn.dataset.cycles, 10) || 1;
+      if (!_dispensing) {
+        var label = selectedCycles > 1
+          ? ('DISPENSE MEDICINE (' + selectedCycles + ' CYCLES)')
+          : (nightDoseDispensed ? 'DISPENSE AGAIN' : 'DISPENSE MEDICINE');
+        setBtnState('idle', label);
+      }
+      toast('Set to ' + selectedCycles + 'x cycles (opens dispenser ' + selectedCycles + ' times sequentially)', 'info', 2200);
+    });
+  });
+
+  // Wire alert buttons
+  var alertDispBtn = document.getElementById('alert-dispense-btn');
+  var alertDismBtn = document.getElementById('alert-dismiss-btn');
+  if (alertDispBtn) alertDispBtn.addEventListener('click', function () { handleDispense(1); });
+  if (alertDismBtn) alertDismBtn.addEventListener('click', dismissAlert);
+
+  // Show missed dose alert if past scheduled time and not yet dispensed
+  function checkMissedDose() {
+    var now = new Date();
+    var h = now.getHours(); var m = now.getMinutes();
+    if (!nightDoseDispensed) {
+      if ((h === 20 && m >= 5) || h > 20) {
+        showMissedAlert();
+      }
+    }
+  }
+  setInterval(checkMissedDose, 60000);
+  checkMissedDose();
+
+  /* ──────────────────────────────────────────────────────────────
+     CONNECTION STATUS
+  ──────────────────────────────────────────────────────────── */
+  function updateConnectionOnline() {
+    var badge = document.getElementById('connection-badge');
+    var label = document.getElementById('conn-label');
+    badge.className = 'online'; label.textContent = 'ESP32 Online';
+
+    // System status panel
+    document.getElementById('sys-esp32').textContent = 'ONLINE';
+    document.getElementById('sys-esp32').className   = 'sys-status sys-online';
+    document.getElementById('sys-api').textContent   = 'CONNECTED';
+    document.getElementById('sys-api').className     = 'sys-status sys-online';
+    document.getElementById('sys-servo').textContent = 'READY';
+    document.getElementById('sys-servo').className   = 'sys-status sys-ready';
+
+    // Caregiver device badge
+    var cgDev = document.getElementById('cg-device-status');
+    if (cgDev) cgDev.innerHTML = '<span class="badge badge-online">● ESP32 Online</span>';
+  }
+
+  function updateConnectionOffline() {
+    var badge = document.getElementById('connection-badge');
+    var label = document.getElementById('conn-label');
+    badge.className = 'offline'; label.textContent = 'ESP32 Offline';
+
+    document.getElementById('sys-esp32').textContent = 'OFFLINE';
+    document.getElementById('sys-esp32').className   = 'sys-status sys-offline';
+    document.getElementById('sys-api').textContent   = 'UNREACHABLE';
+    document.getElementById('sys-api').className     = 'sys-status sys-offline';
+    document.getElementById('sys-servo').textContent = 'UNKNOWN';
+    document.getElementById('sys-servo').className   = 'sys-status sys-offline';
+
+    var cgDev = document.getElementById('cg-device-status');
+    if (cgDev) cgDev.innerHTML = '<span class="badge badge-offline">● ESP32 Offline</span>';
+  }
+
+  function refreshConnection() {
+    var badge = document.getElementById('connection-badge');
+    var label = document.getElementById('conn-label');
+    badge.className = 'checking'; label.textContent = 'Checking…';
+
+    checkConnectionStatus()
+      .then(function (result) {
+        var now = fmtTime(new Date());
+        document.getElementById('last-comm-time').textContent = now;
+        if (result.online) {
+          updateConnectionOnline();
+        } else {
+          updateConnectionOffline();
+          toast('ESP32 Offline — Check device connection at 10.123.129.33', 'warning', 6000);
+        }
+      });
+  }
+
+  refreshConnection();
+  setInterval(refreshConnection, 30000);
+
+})();
+</script>
+</body>
+</html>
